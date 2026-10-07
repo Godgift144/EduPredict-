@@ -1,0 +1,37 @@
+# Production-style stack: MySQL 8 + EduRisk Predictor
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: academic_prediction
+      MYSQL_USER: edurisk
+      MYSQL_PASSWORD: change-me
+      MYSQL_ROOT_PASSWORD: change-root-me
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pchange-root-me"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      FLASK_CONFIG: production
+      SECRET_KEY: please-change-this-secret-key
+      DATABASE_URL: mysql+pymysql://edurisk:change-me@db:3306/academic_prediction
+      MAX_UPLOAD_MB: "5"
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_data:/srv/app/data
+
+volumes:
+  mysql_data:
+  app_data:

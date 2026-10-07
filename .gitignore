@@ -1,0 +1,34 @@
+# Environments
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Local secrets / env
+.env
+
+# Generated at runtime
+data/app.db
+data/uploads/*
+!data/uploads/.gitkeep
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/student_records.csv
+!data/raw/student_records_template.csv
+!artifacts/model.joblib
+!artifacts/.gitkeep
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Thesis temp extraction
+thesis_template.txt

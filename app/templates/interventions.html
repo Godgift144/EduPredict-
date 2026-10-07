@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Interventions{% endblock %}
+{% block page_label %}Interventions{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Interventions</h1>
+    <div class="sub">Track academic support actions and close gaps in the at-risk cohort</div>
+  </div>
+  <div class="actions">
+    <div class="btn-group btn-group-sm" role="group" aria-label="Filter by status">
+      {% for value, label in [('', 'All'), ('planned', 'Planned'), ('in_progress', 'In progress'), ('completed', 'Completed')] %}
+        <a class="btn btn-outline-primary {% if status == value %}active{% endif %}"
+           href="{{ url_for('main.interventions', status=value) }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.students', risk='High Risk') }}">High-risk students</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+    <div class="stat-head"><span class="stat-label">Total recorded</span><span class="stat-ico">{{ ico('heart') }}</span></div>
+    <div class="stat-value">{{ summary.total }}</div>
+    <div class="stat-sub">across all students</div>
+  </div></div></div>
+  <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+    <div class="stat-head"><span class="stat-label">Planned</span><span class="stat-ico" style="background:#eef1f7;color:#64748b">{{ ico('reports') }}</span></div>
+    <div class="stat-value">{{ summary.planned }}</div>
+    <div class="stat-sub">scheduled actions</div>
+  </div></div></div>
+  <div class="col-6 col-xl-2"><div class="stat-card h-100 accent-medium"><div class="card-body">
+    <div class="stat-head"><span class="stat-label">In progress</span><span class="stat-ico" style="background:rgba(245,158,11,.15);color:#b45309">{{ ico('predict') }}</span></div>
+    <div class="stat-value text-risk-medium">{{ summary.in_progress }}</div>
+    <div class="stat-sub">ongoing support</div>
+  </div></div></div>
+  <div class="col-6 col-xl-2"><div class="stat-card h-100 accent-low"><div class="card-body">
+    <div class="stat-head"><span class="stat-label">Completed</span><span class="stat-ico" style="background:rgba(22,163,74,.13);color:#15803d">{{ ico('reports') }}</span></div>
+    <div class="stat-value text-risk-low">{{ summary.completed }}</div>
+    <div class="stat-sub">closed actions</div>
+  </div></div></div>
+  <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+    <div class="stat-head"><span class="stat-label">Coverage</span><span class="stat-ico">{{ ico('dashboard') }}</span></div>
+    <div class="stat-value">{{ summary.coverage_pct }}%</div>
+    <div class="stat-sub">{{ summary.covered }} of {{ summary.at_risk }} at-risk</div>
+  </div></div></div>
+  <div class="col-6 col-xl-2"><div class="stat-card h-100 accent-high"><div class="card-body">
+    <div class="stat-head"><span class="stat-label">Uncovered high risk</span><span class="stat-ico" style="background:rgba(239,68,68,.12);color:#dc2626">{{ ico('spark') }}</span></div>
+    <div class="stat-value text-risk-high">{{ summary.high_risk_uncovered }}</div>
+    <div class="stat-sub">no action recorded</div>
+  </div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-7">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Intervention log{% if status %} — {{ status.replace('_', ' ') }}{% endif %}</span>
+        <span class="section-note">{{ items|length }} record(s)</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>Student</th><th>Action</th><th>Advisor</th><th>Status</th><th>Date</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for item in items %}
+            <tr>
+              <td>
+                <strong>{{ item.student.full_name if item.student else '—' }}</strong>
+                <div class="section-note font-monospace">{{ item.student.student_id if item.student else '' }}</div>
+              </td>
+              <td>
+                {{ item.action }}
+                {% if item.notes %}<div class="section-note">{{ item.notes }}</div>{% endif %}
+              </td>
+              <td>{{ item.advisor.full_name if item.advisor else 'System' }}</td>
+              <td><span class="badge status-{{ item.status }}">{{ item.status.replace('_', ' ') }}</span></td>
+              <td class="section-note">{{ item.created_at.strftime('%Y-%m-%d') }}</td>
+              <td class="text-end">
+                {% if item.student %}
+                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.student_detail', student_pk=item.student.id) }}">Open</a>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-4">
+              No interventions recorded{% if status %} with status “{{ status.replace('_', ' ') }}”{% endif %} yet.
+            </td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-5">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>At-risk students still uncovered</span>
+        <a class="small" href="{{ url_for('main.students', risk='High Risk') }}">All high risk →</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr><th>Student</th><th>Risk</th><th class="text-end">Conf.</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for student, pred in uncovered[:20] %}
+            <tr>
+              <td>
+                <strong>{{ student.full_name }}</strong>
+                <div class="section-note">{{ student.department }}</div>
+              </td>
+              <td>{{ risk_badge(pred.risk_label) }}</td>
+              <td class="text-end">{{ '%.0f'|format(pred.confidence * 100) }}%</td>
+              <td class="text-end">
+                <a class="btn btn-sm btn-primary" href="{{ url_for('main.student_detail', student_pk=student.id) }}">Start</a>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-center text-success py-4">✓ Every at-risk student in the current queue has an intervention.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header">How to use this page</div>
+      <ol class="list-group list-group-numbered list-group-flush small">
+        <li class="list-group-item">Work top-down: uncovered <strong>High Risk</strong> students first.</li>
+        <li class="list-group-item">Open a student, record the intervention (type, notes, status).</li>
+        <li class="list-group-item">Move items from <em>Planned</em> → <em>In progress</em> → <em>Completed</em>.</li>
+        <li class="list-group-item">Coverage % on the dashboard confirms cohort-level progress.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+{% endblock %}

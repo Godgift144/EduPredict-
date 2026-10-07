@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Dashboard{% endblock %} · EduRisk Predictor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+{% macro risk_badge(label) -%}
+  {% if label == 'High Risk' %}<span class="badge risk-high">High Risk</span>
+  {% elif label == 'Medium Risk' %}<span class="badge risk-medium">Medium Risk</span>
+  {% elif label == 'Low Risk' %}<span class="badge risk-low">Low Risk</span>
+  {% else %}<span class="badge risk-none">Not scored</span>{% endif %}
+{%- endmacro %}
+
+{% macro ico(name) -%}
+<svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  {% if name == 'dashboard' %}<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>
+  {% elif name == 'students' %}<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  {% elif name == 'upload' %}<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/>
+  {% elif name == 'predict' %}<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/>
+  {% elif name == 'reports' %}<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/>
+  {% elif name == 'model' %}<path d="M12 2l2.4 4.8 5.3.8-3.8 3.7.9 5.3L12 14.8 7.2 16.6l.9-5.3L4.3 7.6l5.3-.8z"/>
+  {% elif name == 'heart' %}<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l8.8 8.8 8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/>
+  {% elif name == 'users' %}<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  {% elif name == 'logout' %}<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>
+  {% elif name == 'menu' %}<path d="M3 6h18M3 12h18M3 18h18"/>
+  {% elif name == 'spark' %}<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>
+  {% endif %}
+</svg>
+{%- endmacro %}
+
+{% macro nav_link(endpoint, icon, label, endpoints) -%}
+<a class="side-link {% if request.endpoint in endpoints %}active{% endif %}"
+   href="{{ url_for(endpoint) }}">{{ ico(icon) }}<span>{{ label }}</span></a>
+{%- endmacro %}
+
+<div class="app-shell">
+  {# ======================= SIDEBAR ======================= #}
+  <aside class="sidebar offcanvas-md offcanvas-start" tabindex="-1" id="appSidebar">
+    <div class="side-brand">
+      <span class="brand-mark">▲</span>
+      <span class="brand-text">EduRisk<small>Predictor</small></span>
+    </div>
+
+    {% if current_user.is_authenticated %}
+    <nav class="side-nav">
+      <div class="side-label">Monitor</div>
+      {{ nav_link('main.dashboard', 'dashboard', 'Dashboard', ['main.dashboard']) }}
+      {{ nav_link('main.students', 'students', 'Students', ['main.students', 'main.student_detail']) }}
+
+      <div class="side-label">Work</div>
+      {% if current_user.can('upload') %}
+        {{ nav_link('main.upload', 'upload', 'Upload data', ['main.upload']) }}
+      {% endif %}
+      {{ nav_link('main.predict_page', 'predict', 'Predict', ['main.predict_page']) }}
+      {% if current_user.can('view_interventions') %}
+        {{ nav_link('main.interventions', 'heart', 'Interventions', ['main.interventions']) }}
+      {% endif %}
+
+      <div class="side-label">Insights</div>
+      {{ nav_link('main.reports', 'reports', 'Reports', ['main.reports', 'main.export_predictions']) }}
+      {% if current_user.can('view_model') %}
+        {{ nav_link('main.model_page', 'model', 'Model', ['main.model_page']) }}
+      {% endif %}
+
+      {% if current_user.can('manage_users') %}
+      <div class="side-label">Administration</div>
+      {{ nav_link('main.users', 'users', 'Users', ['main.users']) }}
+      {% endif %}
+    </nav>
+
+    <div class="side-user">
+      <span class="avatar">{{ current_user.full_name[:2] | upper }}</span>
+      <span class="side-user-info">
+        <strong>{{ current_user.full_name }}</strong>
+        <em>{{ current_user.role_label }}</em>
+      </span>
+      <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="side-logout" type="submit" title="Log out" aria-label="Log out">{{ ico('logout') }}</button>
+      </form>
+    </div>
+    {% endif %}
+  </aside>
+
+  {# ======================= CONTENT ======================= #}
+  <div class="app-content">
+    <header class="topbar no-print">
+      <button class="side-toggle" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebar"
+              aria-controls="appSidebar" aria-label="Toggle navigation">{{ ico('menu') }}</button>
+      <div class="topbar-title">
+        <span class="crumb">EduRisk</span><span class="crumb-sep">/</span>
+        <strong>{% block page_label %}Dashboard{% endblock %}</strong>
+      </div>
+      <div class="topbar-right">
+        {% if current_user.is_authenticated %}
+        <span class="topbar-chip">
+          <span class="avatar sm">{{ current_user.full_name[:2] | upper }}</span>
+          <span class="d-none d-md-inline">{{ current_user.full_name }}</span>
+          <span class="role-pill">{{ current_user.role_label }}</span>
+        </span>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="page-body">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="row no-print g-0">
+            <div class="col-12">
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="page-footer text-muted small no-print">
+      EduRisk Predictor v{{ app_version }} · AI-based academic performance prediction &amp; early-warning system · © {{ current_year }}
+    </footer>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='vendor/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block page_scripts %}{% endblock %}
+</body>
+</html>

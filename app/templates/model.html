@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Model performance{% endblock %}
+{% block page_label %}Model{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Machine learning model</h1>
+    <div class="sub">
+      {% if model_meta.model_name %}
+        {{ model_meta.model_name }} · version {{ model_meta.model_version }}
+        · trained {{ model_meta.trained_at[:19] if model_meta.trained_at else '—' }} (UTC)
+        · {{ model_meta.training_rows }} training records
+      {% else %}Model not trained yet{% endif %}
+    </div>
+  </div>
+  <div class="actions">
+    {% if current_user.is_admin %}
+    <button class="btn btn-outline-warning btn-sm" id="retrainBtn" type="button">Retrain model</button>
+    {% endif %}
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.reports') }}">Back to reports</a>
+  </div>
+</div>
+
+{% if metrics %}
+<div class="row g-3 mb-3">
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold">Model comparison (held-out test set)</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Model</th>
+              <th class="text-end">Accuracy</th>
+              <th class="text-end">Precision</th>
+              <th class="text-end">Recall</th>
+              <th class="text-end">F1</th>
+              <th class="text-end">CV F1 (5-fold)</th>
+              <th class="text-end">Time (s)</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for name, res in metrics.models.items() %}
+            <tr class="{% if name == metrics.best_model %}table-success{% endif %}">
+              <td>{{ name }}{% if name == metrics.best_model %} ★ selected{% endif %}</td>
+              <td class="text-end">{{ '%.4f'|format(res.test.accuracy) }}</td>
+              <td class="text-end">{{ '%.4f'|format(res.test.precision_weighted) }}</td>
+              <td class="text-end">{{ '%.4f'|format(res.test.recall_weighted) }}</td>
+              <td class="text-end">{{ '%.4f'|format(res.test.f1_weighted) }}</td>
+              <td class="text-end">{{ '%.4f'|format(res.cv_f1_mean) }} ± {{ '%.4f'|format(res.cv_f1_std) }}</td>
+              <td class="text-end">{{ res.train_seconds }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold">Per-class metrics — {{ metrics.best_model }}</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Class</th><th class="text-end">Precision</th><th class="text-end">Recall</th><th class="text-end">F1</th><th class="text-end">Support</th></tr>
+          </thead>
+          <tbody>
+          {% for label, m in metrics.best_metrics.per_class.items() %}
+            <tr>
+              <td>{{ label }}</td>
+              <td class="text-end">{{ '%.3f'|format(m.precision) }}</td>
+              <td class="text-end">{{ '%.3f'|format(m.recall) }}</td>
+              <td class="text-end">{{ '%.3f'|format(m.f1) }}</td>
+              <td class="text-end">{{ m.support }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold">Confusion matrix — {{ metrics.best_model }}</div>
+      <div class="card-body text-center">
+        <img class="img-fluid" style="max-width: 420px;"
+             src="{{ url_for('main.plot', filename='confusion_matrix.png') }}?v={{ metrics.model_version }}"
+             alt="Confusion matrix">
+        <div class="small text-muted mt-2">
+          Rows = actual class, columns = predicted class.
+          Total test samples: {{ metrics.best_metrics.n_samples }}.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold">Top feature importances</div>
+      <div class="card-body text-center">
+        <img class="img-fluid" style="max-width: 560px;"
+             src="{{ url_for('main.plot', filename='feature_importance.png') }}?v={{ metrics.model_version }}"
+             alt="Feature importances">
+        <div class="small text-muted mt-2">
+          Which mid-semester indicators the model relies on most.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold">Model comparison chart</div>
+      <div class="card-body text-center">
+        <img class="img-fluid" style="max-width: 640px;"
+             src="{{ url_for('main.plot', filename='model_comparison.png') }}?v={{ metrics.model_version }}"
+             alt="Model comparison">
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold">Class distribution in the training data</div>
+      <div class="card-body text-center">
+        <img class="img-fluid" style="max-width: 560px;"
+             src="{{ url_for('main.plot', filename='class_distribution.png') }}?v={{ metrics.model_version }}"
+             alt="Class distribution">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold">Dataset profile</div>
+      <ul class="list-group list-group-flush small">
+        <li class="list-group-item">Raw rows read: <strong>{{ metrics.dataset.raw_rows }}</strong></li>
+        <li class="list-group-item">Rows used for training: <strong>{{ metrics.dataset.rows_used }}</strong>
+          ({{ metrics.dataset.dropped_rows }} dropped: duplicates / missing outcomes)</li>
+        <li class="list-group-item">Features: {{ metrics.dataset.features|length }} ({{ metrics.dataset.features|join(', ') }})</li>
+        <li class="list-group-item">Split: {{ metrics.split.train_rows }} train / {{ metrics.split.test_rows }} test
+          ({{ (metrics.split.test_size * 100)|round|int }}% test, stratified, seed {{ metrics.split.random_state }})</li>
+        <li class="list-group-item">Class distribution:
+          {% for label, count in metrics.dataset.class_distribution.items() %}
+            {{ label }}: {{ count }}{% if not loop.last %} · {% endif %}
+          {% endfor %}
+        </li>
+      </ul>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold">Top features driving predictions</div>
+      <ol class="list-group list-group-decimal list-group-flush small">
+        {% for f in metrics.feature_importances[:8] %}
+        <li class="list-group-item d-flex justify-content-between">
+          <span>{{ f.feature.replace('_', ' ') | title }}</span>
+          <span class="font-monospace">{{ '%.4f'|format(f.importance) }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-warning">The model has not been trained yet. Run <code>python -m scripts.setup</code>.</div>
+{% endif %}
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+const retrainBtn = document.getElementById('retrainBtn');
+if (retrainBtn) {
+  retrainBtn.addEventListener('click', async () => {
+    retrainBtn.disabled = true;
+    retrainBtn.textContent = 'Retraining… (this can take a minute)';
+    try {
+      const res = await apiFetch('{{ url_for("api.api_retrain") }}', { method: 'POST', body: '{}' });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Retrained ${data.best_model}: accuracy ${(data.accuracy * 100).toFixed(1)}% — ${data.rescored} students re-scored.`);
+        window.location.reload();
+      } else {
+        alert(data.error || 'Retraining failed.');
+      }
+    } catch (e) {
+      alert('Retraining failed: ' + e);
+    } finally {
+      retrainBtn.disabled = false;
+      retrainBtn.textContent = 'Retrain model';
+    }
+  });
+}
+</script>
+{% endblock %}

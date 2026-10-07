@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_label %}{{ 'Overview' if role == 'admin' else ('At-risk work-list' if role == 'advisor' else 'Dashboard') }}{% endblock %}
+
+{% block content %}
+{# ============================ page head ============================ #}
+<div class="page-head">
+  <div>
+    {% if role == 'admin' %}
+      <h1>Institutional overview</h1>
+      <div class="sub">University-wide early-warning monitoring, system status and intervention coverage</div>
+    {% elif role == 'advisor' %}
+      <h1>At-risk work-list</h1>
+      <div class="sub">Students needing academic support, with intervention tracking and coverage</div>
+    {% else %}
+      <h1>Early-warning dashboard</h1>
+      <div class="sub">Monitor your cohorts, refresh mid-semester data and act on early-warning alerts</div>
+    {% endif %}
+  </div>
+  <div class="actions">
+    {% if current_user.can('upload') %}
+      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.upload') }}">Upload records</a>
+    {% endif %}
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.predict_page') }}">Predict a student</a>
+    {% if role == 'advisor' %}
+      <a class="btn btn-primary btn-sm" href="{{ url_for('main.interventions') }}">Open interventions</a>
+    {% else %}
+      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.reports') }}">Reports</a>
+    {% endif %}
+  </div>
+</div>
+
+{# ============================ stat cards ============================ #}
+<div class="row g-3 mb-3">
+  {% if role == 'admin' %}
+    {# — administrator: institution + system health — #}
+    <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">Students scored</span><span class="stat-ico">{{ ico('students') }}</span></div>
+      <div class="stat-value">{{ summary.scored_students }}</div>
+      <div class="stat-sub">{{ summary.total_students }} on record</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100 accent-high"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">High risk</span><span class="stat-ico" style="background:rgba(239,68,68,.12);color:#dc2626">{{ ico('spark') }}</span></div>
+      <div class="stat-value text-risk-high">{{ summary.high_risk }}</div>
+      <div class="stat-sub">{{ summary.high_risk_pct }}% of scored</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">At risk (med + high)</span><span class="stat-ico">{{ ico('dashboard') }}</span></div>
+      <div class="stat-value">{{ summary.at_risk_pct }}%</div>
+      <div class="stat-sub">{{ summary.medium_risk }} medium · {{ summary.high_risk }} high</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">Interventions</span><span class="stat-ico" style="background:rgba(22,163,74,.13);color:#15803d">{{ ico('heart') }}</span></div>
+      <div class="stat-value">{{ intervention.total }}</div>
+      <div class="stat-sub">{{ intervention.coverage_pct }}% at-risk coverage</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">Users</span><span class="stat-ico">{{ ico('users') }}</span></div>
+      <div class="stat-value">{{ user_count }}</div>
+      <div class="stat-sub">{{ upload_count }} dataset upload(s)</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">Pass rate (actual)</span><span class="stat-ico">{{ ico('reports') }}</span></div>
+      <div class="stat-value">{{ (bands.pass_rate ~ '%') if bands else '—' }}</div>
+      <div class="stat-sub">mean score {{ bands.mean if bands else '—' }}</div>
+    </div></div></div>
+
+  {% elif role == 'advisor' %}
+    {# — advisor: caseload & intervention coverage — #}
+    <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">At-risk students</span><span class="stat-ico">{{ ico('students') }}</span></div>
+      <div class="stat-value">{{ intervention.at_risk }}</div>
+      <div class="stat-sub">medium + high risk</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100 accent-high"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">High risk</span><span class="stat-ico" style="background:rgba(239,68,68,.12);color:#dc2626">{{ ico('spark') }}</span></div>
+      <div class="stat-value text-risk-high">{{ intervention.high_risk }}</div>
+      <div class="stat-sub">{{ intervention.high_risk_uncovered }} still without action</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100 accent-high"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">Needs intervention</span><span class="stat-ico" style="background:rgba(239,68,68,.12);color:#dc2626">{{ ico('heart') }}</span></div>
+      <div class="stat-value text-risk-high">{{ intervention.uncovered }}</div>
+      <div class="stat-sub">no intervention recorded yet</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100 accent-medium"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">In progress</span><span class="stat-ico" style="background:rgba(245,158,11,.15);color:#b45309">{{ ico('predict') }}</span></div>
+      <div class="stat-value text-risk-medium">{{ intervention.in_progress }}</div>
+      <div class="stat-sub">{{ intervention.planned }} planned</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100 accent-low"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">Completed</span><span class="stat-ico" style="background:rgba(22,163,74,.13);color:#15803d">{{ ico('reports') }}</span></div>
+      <div class="stat-value text-risk-low">{{ intervention.completed }}</div>
+      <div class="stat-sub">{{ intervention.high_risk_completed }} high-risk resolved</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">Coverage</span><span class="stat-ico">{{ ico('dashboard') }}</span></div>
+      <div class="stat-value">{{ intervention.coverage_pct }}%</div>
+      <div class="stat-sub">{{ intervention.covered }} of {{ intervention.at_risk }} at-risk covered</div>
+    </div></div></div>
+
+  {% else %}
+    {# — lecturer: cohort monitoring — #}
+    <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">Students on record</span><span class="stat-ico">{{ ico('students') }}</span></div>
+      <div class="stat-value">{{ summary.total_students }}</div>
+      <div class="stat-sub">{{ summary.scored_students }} scored</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100 accent-high"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">High risk</span><span class="stat-ico" style="background:rgba(239,68,68,.12);color:#dc2626">{{ ico('spark') }}</span></div>
+      <div class="stat-value text-risk-high">{{ summary.high_risk }}</div>
+      <div class="stat-sub">{{ summary.high_risk_pct }}% of scored</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100 accent-medium"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">Medium risk</span><span class="stat-ico" style="background:rgba(245,158,11,.15);color:#b45309">{{ ico('predict') }}</span></div>
+      <div class="stat-value text-risk-medium">{{ summary.medium_risk }}</div>
+      <div class="stat-sub">watch-list</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100 accent-low"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">Low risk</span><span class="stat-ico" style="background:rgba(22,163,74,.13);color:#15803d">{{ ico('reports') }}</span></div>
+      <div class="stat-value text-risk-low">{{ summary.low_risk }}</div>
+      <div class="stat-sub">on track</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">At risk (med + high)</span><span class="stat-ico">{{ ico('dashboard') }}</span></div>
+      <div class="stat-value">{{ summary.at_risk_pct }}%</div>
+      <div class="stat-sub">needs attention</div>
+    </div></div></div>
+    <div class="col-6 col-xl-2"><div class="stat-card h-100"><div class="card-body">
+      <div class="stat-head"><span class="stat-label">Pass rate (actual)</span><span class="stat-ico">{{ ico('heart') }}</span></div>
+      <div class="stat-value">{{ (bands.pass_rate ~ '%') if bands else '—' }}</div>
+      <div class="stat-sub">mean score {{ bands.mean if bands else '—' }}</div>
+    </div></div></div>
+  {% endif %}
+</div>
+
+{# ============================ charts row ============================ #}
+<div class="row g-3 mb-3">
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">Risk distribution</div>
+      <div class="card-body d-flex justify-content-center canvas-box">
+        <canvas id="riskChart" width="250" height="250" aria-label="Risk distribution chart" role="img"></canvas>
+      </div>
+    </div>
+  </div>
+
+  {% if role == 'advisor' %}
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">Interventions by status</div>
+      <div class="card-body d-flex justify-content-center canvas-box">
+        <canvas id="interventionChart" width="250" height="250" aria-label="Interventions by status chart" role="img"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">Coverage snapshot</div>
+      <div class="card-body">
+        <div class="kv-row"><span>At-risk students</span><span>{{ intervention.at_risk }}</span></div>
+        <div class="kv-row"><span>With any intervention</span><span>{{ intervention.covered }}</span></div>
+        <div class="kv-row"><span>Coverage rate</span><span>{{ intervention.coverage_pct }}%</span></div>
+        <div class="kv-row"><span>High-risk without action</span><span class="text-risk-high">{{ intervention.high_risk_uncovered }}</span></div>
+        <div class="kv-row"><span>High-risk completed</span><span class="text-risk-low">{{ intervention.high_risk_completed }}</span></div>
+        <a class="btn btn-primary btn-sm w-100 mt-3" href="{{ url_for('main.interventions') }}">Manage interventions</a>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header">Risk levels by department</div>
+      <div class="card-body">
+        <canvas id="deptChart" height="140" aria-label="Risk by department chart" role="img"></canvas>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{# ============================ role-specific panels ============================ #}
+<div class="row g-3">
+  {% if role == 'advisor' %}
+    {# — advisor: priority queue — #}
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Priority queue — highest-risk students</span>
+          <a class="small" href="{{ url_for('main.students', risk='High Risk') }}">View all high-risk →</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Student</th><th>Department</th><th>Risk</th>
+                <th class="text-end">Confidence</th><th>Intervention</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for student, pred, item in queue %}
+              <tr>
+                <td>
+                  <strong>{{ student.full_name }}</strong>
+                  <div class="section-note font-monospace">{{ student.student_id }}</div>
+                </td>
+                <td>{{ student.department }}</td>
+                <td>{{ risk_badge(pred.risk_label) }}</td>
+                <td class="text-end">{{ '%.0f'|format(pred.confidence * 100) }}%</td>
+                <td>
+                  {% if item %}
+                    <span class="badge status-{{ item.status }}">{{ item.status.replace('_', ' ') }}</span>
+                  {% else %}
+                    <span class="badge status-none">none yet</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.student_detail', student_pk=student.id) }}">Counsel</a>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="6" class="text-center text-muted py-4">No at-risk students — upload and score records first.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card h-100">
+        <div class="card-header">Advisor next steps</div>
+        <ul class="list-group list-group-flush small">
+          <li class="list-group-item">Work the queue top-down: <strong>High Risk</strong> students first.</li>
+          <li class="list-group-item">Record every meeting on the student page so coverage stays accurate.</li>
+          <li class="list-group-item">Close items with status <em>Completed</em> after follow-up.</li>
+          <li class="list-group-item">Use <strong>Predict</strong> for what-if scenarios during counselling.</li>
+        </ul>
+      </div>
+    </div>
+
+  {% else %}
+    {# — admin & lecturer: early-warning alerts — #}
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>⚠ Early-warning alerts</span>
+          <a class="small" href="{{ url_for('main.students', risk='High Risk') }}">View all high-risk students →</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Student ID</th><th>Name</th><th>Department</th>
+                <th>Risk</th><th class="text-end">Confidence</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for student, pred in recent_alerts %}
+              <tr>
+                <td class="font-monospace">{{ student.student_id }}</td>
+                <td>{{ student.full_name }}</td>
+                <td>{{ student.department }}</td>
+                <td>{{ risk_badge(pred.risk_label) }}</td>
+                <td class="text-end">{{ '%.0f'|format(pred.confidence * 100) }}%</td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.student_detail', student_pk=student.id) }}">Open</a>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="6" class="text-center text-muted py-4">No alerts — upload and score student records first.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      {% if role == 'admin' %}
+      <div class="card mb-3">
+        <div class="card-header">System status</div>
+        <div class="card-body small">
+          <div class="kv-row"><span>Model</span><span>{{ model_meta.model_name or 'not trained' }}</span></div>
+          <div class="kv-row"><span>Version</span><span>{{ model_meta.model_version or '—' }}</span></div>
+          <div class="kv-row"><span>Trained</span><span>{{ model_meta.trained_at[:10] if model_meta.trained_at else '—' }}</span></div>
+          <div class="kv-row"><span>Training rows</span><span>{{ model_meta.training_rows or '—' }}</span></div>
+          <div class="kv-row"><span>Registered users</span><span>{{ user_count }}</span></div>
+          <div class="kv-row"><span>Dataset uploads</span><span>{{ upload_count }}</span></div>
+          <div class="kv-row"><span>Last upload</span><span>{{ last_upload.filename if last_upload else '—' }}</span></div>
+          <div class="d-flex gap-2 mt-3">
+            <a class="btn btn-outline-primary btn-sm flex-fill" href="{{ url_for('main.model_page') }}">Model report</a>
+            <a class="btn btn-outline-primary btn-sm flex-fill" href="{{ url_for('main.users') }}">Manage users</a>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">Administrator next steps</div>
+        <ul class="list-group list-group-flush small">
+          <li class="list-group-item">Review intervention coverage weekly (advisor work-list).</li>
+          <li class="list-group-item">Retrain the model after each examination cycle.</li>
+          <li class="list-group-item">Export departmental reports for planning meetings.</li>
+        </ul>
+      </div>
+
+      {% else %}
+      <div class="card mb-3">
+        <div class="card-header">Data freshness</div>
+        <div class="card-body small">
+          <div class="kv-row"><span>Last upload</span><span>{{ last_upload.filename if last_upload else 'none yet' }}</span></div>
+          <div class="kv-row"><span>When</span><span>{{ last_upload.created_at.strftime('%Y-%m-%d %H:%M') if last_upload else '—' }}</span></div>
+          <div class="kv-row"><span>Rows imported</span><span>{{ last_upload.accepted_rows if last_upload else 0 }}</span></div>
+          <div class="kv-row"><span>Uploads total</span><span>{{ upload_count }}</span></div>
+          <div class="kv-row"><span>Active model</span><span>{{ model_meta.model_name or 'not trained' }}</span></div>
+          <a class="btn btn-primary btn-sm w-100 mt-3" href="{{ url_for('main.upload') }}">Upload fresh records</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">Lecturer next steps</div>
+        <ul class="list-group list-group-flush small">
+          <li class="list-group-item">Upload mid-semester records to keep predictions current.</li>
+          <li class="list-group-item">Review every <strong>High Risk</strong> alert above before the next lecture.</li>
+          <li class="list-group-item">Run <strong>Predict</strong> for individual students during advising.</li>
+          <li class="list-group-item">Export the risk list from <a href="{{ url_for('main.reports') }}">Reports</a> for meetings.</li>
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<script id="dashboard-data" type="application/json">
+{{ {
+  'riskCounts': summary.risk_counts,
+  'deptDistribution': dept_distribution,
+  'interventionCounts': {
+    'planned': intervention.planned,
+    'in_progress': intervention.in_progress,
+    'completed': intervention.completed
+  }
+} | tojson }}
+</script>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

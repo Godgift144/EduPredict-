@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}{{ student.full_name }}{% endblock %}
+{% block page_label %}{{ student.full_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ student.full_name }}</h1>
+    <div class="sub font-monospace">{{ student.student_id }} · {{ student.programme }} · {{ student.department }}</div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.students') }}">← Back to students</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  {# ---------------- left column ---------------- #}
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header bg-white fw-semibold">Predicted risk</div>
+      <div class="card-body">
+        {% if prediction %}
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div>
+              {{ risk_badge(prediction.risk_label) }}
+              <div class="small text-muted mt-1">
+                Confidence {{ '%.1f'|format(prediction.confidence * 100) }}%
+                · {{ prediction.created_at.strftime('%Y-%m-%d %H:%M') }}
+                {% if prediction.model_version %} · model {{ prediction.model_version }}{% endif %}
+              </div>
+            </div>
+            <div class="flex-grow-1">
+              {% for label, prob, cls in [
+                  ('Low Risk', prediction.prob_low, 'bg-success'),
+                  ('Medium Risk', prediction.prob_medium, 'bg-warning'),
+                  ('High Risk', prediction.prob_high, 'bg-danger')] %}
+                <div class="mb-1">
+                  <div class="d-flex justify-content-between small"><span>{{ label }}</span><span>{{ '%.1f'|format(prob * 100) }}%</span></div>
+                  <div class="progress prob-bar bg-light"><div class="progress-bar {{ cls }}" style="width: {{ '%.1f'|format(prob * 100) }}%"></div></div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          {% if explanation.top_factors %}
+          <h2 class="h6 text-muted text-uppercase mt-3">Key factors driving this prediction</h2>
+          <ul class="list-unstyled small mb-0">
+            {% for f in explanation.top_factors %}
+            <li class="mb-1">
+              <span class="fw-semibold">{{ f.feature.replace('_', ' ') | title }}</span>:
+              student value <strong>{{ f.value }}</strong> vs cohort mean <strong>{{ f.cohort_mean }}</strong>
+            </li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        {% else %}
+          <p class="text-muted mb-2">This student has not been scored yet.</p>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('main.predict_page') }}">Run a prediction</a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if prediction %}
+    <div class="card mb-3">
+      <div class="card-header bg-white fw-semibold">Recommended early interventions</div>
+      <ul class="list-group list-group-flush small">
+        {% for rec in prediction.recommendations_list %}
+        <li class="list-group-item">• {{ rec }}</li>
+        {% else %}
+        <li class="list-group-item text-muted">No specific recommendations recorded.</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header bg-white fw-semibold">Performance vs cohort average</div>
+      <div class="card-body">
+        {% for row in comparison %}
+        <div class="mb-2 feature-row">
+          <div class="d-flex justify-content-between small">
+            <span>{{ row.label }}</span>
+            <span>
+              {% if row.value is not none %}<strong>{{ row.value }}</strong>{% else %}—{% endif %}
+              {% if row.cohort_mean is not none %}<span class="text-muted">(cohort {{ '%.1f'|format(row.cohort_mean) }})</span>{% endif %}
+            </span>
+          </div>
+          <div class="progress" style="height: 8px;">
+            <div class="progress-bar {% if row.cohort_mean is not none and row.value is not none and row.value < row.cohort_mean %}bg-warning{% else %}bg-success{% endif %}"
+                 style="width: {{ '%.1f'|format([row.value or 0, 100]|min) }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# ---------------- right column ---------------- #}
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header bg-white fw-semibold">Student record</div>
+      <div class="card-body small">
+        <dl class="row mb-0">
+          <dt class="col-5">Gender</dt><dd class="col-7">{{ student.gender }}</dd>
+          <dt class="col-5">Age</dt><dd class="col-7">{{ student.age or '—' }}</dd>
+          <dt class="col-5">Previous GPA</dt><dd class="col-7">{{ '%.2f'|format(student.previous_gpa) if student.previous_gpa is not none else '—' }}</dd>
+          <dt class="col-5">Attendance</dt><dd class="col-7">{{ '%.0f'|format(student.attendance_pct) ~ '%' if student.attendance_pct is not none else '—' }}</dd>
+          <dt class="col-5">Assignments</dt><dd class="col-7">{{ '%.1f'|format(student.assignment_score) if student.assignment_score is not none else '—' }}</dd>
+          <dt class="col-5">Quizzes</dt><dd class="col-7">{{ '%.1f'|format(student.quiz_score) if student.quiz_score is not none else '—' }}</dd>
+          <dt class="col-5">Mid-semester</dt><dd class="col-7">{{ '%.1f'|format(student.mid_sem_score) if student.mid_sem_score is not none else '—' }}</dd>
+          <dt class="col-5">Continuous assessment</dt><dd class="col-7">{{ '%.1f'|format(student.continuous_assessment) if student.continuous_assessment is not none else '—' }}</dd>
+          <dt class="col-5">Study hours/week</dt><dd class="col-7">{{ '%.1f'|format(student.study_hours) if student.study_hours is not none else '—' }}</dd>
+          <dt class="col-5 border-top pt-2">Final score (actual)</dt>
+          <dd class="col-7 border-top pt-2">{{ '%.1f'|format(student.final_score) if student.final_score is not none else 'not yet released' }}</dd>
+          <dt class="col-5">Final GPA (actual)</dt>
+          <dd class="col-7">{{ '%.2f'|format(student.final_gpa) if student.final_gpa is not none else '—' }}</dd>
+          {% if student.risk_level %}
+          <dt class="col-5">Actual risk band</dt><dd class="col-7">{{ risk_badge(student.risk_level) }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+
+    {% if can_intervene %}
+    <div class="card mb-3">
+      <div class="card-header bg-white fw-semibold">Record an intervention</div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('main.add_intervention', student_pk=student.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-2">
+            <label class="form-label small mb-1" for="action">Type</label>
+            {{ intervention_form.action(class_='form-select form-select-sm') }}
+          </div>
+          <div class="mb-2">
+            <label class="form-label small mb-1" for="notes">Notes</label>
+            {{ intervention_form.notes(class_='form-control form-control-sm', rows=2, placeholder='What will be done, and by when?') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small mb-1" for="status">Status</label>
+            {{ intervention_form.status(class_='form-select form-select-sm') }}
+          </div>
+          <button class="btn btn-primary btn-sm w-100" type="submit">Save intervention</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header bg-white fw-semibold">Intervention history</div>
+      <ul class="list-group list-group-flush small">
+        {% for item in interventions %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <strong>{{ item.action }}</strong>
+            <span class="badge text-bg-{% if item.status == 'completed' %}success{% elif item.status == 'in_progress' %}primary{% else %}secondary{% endif %}">
+              {{ item.status.replace('_', ' ') }}
+            </span>
+          </div>
+          {% if item.notes %}<div class="text-muted">{{ item.notes }}</div>{% endif %}
+          <div class="text-muted small">
+            {{ item.advisor.full_name if item.advisor else 'System' }} · {{ item.created_at.strftime('%Y-%m-%d %H:%M') }}
+          </div>
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">No interventions recorded yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

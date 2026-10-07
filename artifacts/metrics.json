@@ -1,0 +1,462 @@
+{
+  "model_version": "20261006-234716",
+  "model_name": "Random Forest",
+  "trained_at": "2026-10-06T23:47:16.222618+00:00",
+  "dataset": {
+    "path": "C:\\Users\\Godgift Theophilus\\Downloads\\enock-project\\data\\raw\\student_records.csv",
+    "raw_rows": 2550,
+    "rows_used": 2500,
+    "dropped_rows": 50,
+    "features": [
+      "age",
+      "previous_gpa",
+      "attendance_pct",
+      "assignment_score",
+      "quiz_score",
+      "mid_sem_score",
+      "continuous_assessment",
+      "study_hours",
+      "programme",
+      "department",
+      "gender"
+    ],
+    "target": "risk_label",
+    "class_distribution": {
+      "Low Risk": 908,
+      "Medium Risk": 1256,
+      "High Risk": 336
+    }
+  },
+  "split": {
+    "test_size": 0.2,
+    "random_state": 42,
+    "train_rows": 2000,
+    "test_rows": 500
+  },
+  "models": {
+    "Random Forest": {
+      "cv_f1_mean": 0.833,
+      "cv_f1_std": 0.0147,
+      "train_seconds": 5.524,
+      "test": {
+        "accuracy": 0.83,
+        "precision_weighted": 0.8299,
+        "recall_weighted": 0.83,
+        "f1_weighted": 0.8293,
+        "precision_macro": 0.8295,
+        "recall_macro": 0.8057,
+        "f1_macro": 0.8162,
+        "per_class": {
+          "Low Risk": {
+            "precision": 0.8316,
+            "recall": 0.8681,
+            "f1": 0.8495,
+            "support": 182
+          },
+          "Medium Risk": {
+            "precision": 0.8294,
+            "recall": 0.8327,
+            "f1": 0.831,
+            "support": 251
+          },
+          "High Risk": {
+            "precision": 0.8276,
+            "recall": 0.7164,
+            "f1": 0.768,
+            "support": 67
+          }
+        },
+        "confusion_matrix": [
+          [
+            158,
+            24,
+            0
+          ],
+          [
+            32,
+            209,
+            10
+          ],
+          [
+            0,
+            19,
+            48
+          ]
+        ],
+        "labels": [
+          "Low Risk",
+          "Medium Risk",
+          "High Risk"
+        ],
+        "n_samples": 500
+      }
+    },
+    "Decision Tree": {
+      "cv_f1_mean": 0.7623,
+      "cv_f1_std": 0.0067,
+      "train_seconds": 4.637,
+      "test": {
+        "accuracy": 0.752,
+        "precision_weighted": 0.7513,
+        "recall_weighted": 0.752,
+        "f1_weighted": 0.7507,
+        "precision_macro": 0.7467,
+        "recall_macro": 0.7172,
+        "f1_macro": 0.7297,
+        "per_class": {
+          "Low Risk": {
+            "precision": 0.7647,
+            "recall": 0.7857,
+            "f1": 0.7751,
+            "support": 182
+          },
+          "Medium Risk": {
+            "precision": 0.7481,
+            "recall": 0.7689,
+            "f1": 0.7583,
+            "support": 251
+          },
+          "High Risk": {
+            "precision": 0.7273,
+            "recall": 0.597,
+            "f1": 0.6557,
+            "support": 67
+          }
+        },
+        "confusion_matrix": [
+          [
+            143,
+            39,
+            0
+          ],
+          [
+            43,
+            193,
+            15
+          ],
+          [
+            1,
+            26,
+            40
+          ]
+        ],
+        "labels": [
+          "Low Risk",
+          "Medium Risk",
+          "High Risk"
+        ],
+        "n_samples": 500
+      }
+    },
+    "Logistic Regression": {
+      "cv_f1_mean": 0.8255,
+      "cv_f1_std": 0.0188,
+      "train_seconds": 3.42,
+      "test": {
+        "accuracy": 0.84,
+        "precision_weighted": 0.8415,
+        "recall_weighted": 0.84,
+        "f1_weighted": 0.8401,
+        "precision_macro": 0.8251,
+        "recall_macro": 0.8483,
+        "f1_macro": 0.8356,
+        "per_class": {
+          "Low Risk": {
+            "precision": 0.8441,
+            "recall": 0.8626,
+            "f1": 0.8533,
+            "support": 182
+          },
+          "Medium Risk": {
+            "precision": 0.8577,
+            "recall": 0.8167,
+            "f1": 0.8367,
+            "support": 251
+          },
+          "High Risk": {
+            "precision": 0.7733,
+            "recall": 0.8657,
+            "f1": 0.8169,
+            "support": 67
+          }
+        },
+        "confusion_matrix": [
+          [
+            157,
+            25,
+            0
+          ],
+          [
+            29,
+            205,
+            17
+          ],
+          [
+            0,
+            9,
+            58
+          ]
+        ],
+        "labels": [
+          "Low Risk",
+          "Medium Risk",
+          "High Risk"
+        ],
+        "n_samples": 500
+      }
+    },
+    "Naive Bayes": {
+      "cv_f1_mean": 0.8289,
+      "cv_f1_std": 0.0153,
+      "train_seconds": 0.231,
+      "test": {
+        "accuracy": 0.838,
+        "precision_weighted": 0.8381,
+        "recall_weighted": 0.838,
+        "f1_weighted": 0.838,
+        "precision_macro": 0.8317,
+        "recall_macro": 0.8346,
+        "f1_macro": 0.8331,
+        "per_class": {
+          "Low Risk": {
+            "precision": 0.8462,
+            "recall": 0.8462,
+            "f1": 0.8462,
+            "support": 182
+          },
+          "Medium Risk": {
+            "precision": 0.84,
+            "recall": 0.8367,
+            "f1": 0.8383,
+            "support": 251
+          },
+          "High Risk": {
+            "precision": 0.8088,
+            "recall": 0.8209,
+            "f1": 0.8148,
+            "support": 67
+          }
+        },
+        "confusion_matrix": [
+          [
+            154,
+            28,
+            0
+          ],
+          [
+            28,
+            210,
+            13
+          ],
+          [
+            0,
+            12,
+            55
+          ]
+        ],
+        "labels": [
+          "Low Risk",
+          "Medium Risk",
+          "High Risk"
+        ],
+        "n_samples": 500
+      }
+    },
+    "Support Vector Machine": {
+      "cv_f1_mean": 0.8213,
+      "cv_f1_std": 0.0212,
+      "train_seconds": 1.557,
+      "test": {
+        "accuracy": 0.848,
+        "precision_weighted": 0.8497,
+        "recall_weighted": 0.848,
+        "f1_weighted": 0.8479,
+        "precision_macro": 0.8323,
+        "recall_macro": 0.8525,
+        "f1_macro": 0.8414,
+        "per_class": {
+          "Low Risk": {
+            "precision": 0.8438,
+            "recall": 0.8901,
+            "f1": 0.8663,
+            "support": 182
+          },
+          "Medium Risk": {
+            "precision": 0.8723,
+            "recall": 0.8167,
+            "f1": 0.8436,
+            "support": 251
+          },
+          "High Risk": {
+            "precision": 0.7808,
+            "recall": 0.8507,
+            "f1": 0.8143,
+            "support": 67
+          }
+        },
+        "confusion_matrix": [
+          [
+            162,
+            20,
+            0
+          ],
+          [
+            30,
+            205,
+            16
+          ],
+          [
+            0,
+            10,
+            57
+          ]
+        ],
+        "labels": [
+          "Low Risk",
+          "Medium Risk",
+          "High Risk"
+        ],
+        "n_samples": 500
+      }
+    }
+  },
+  "best_model": "Random Forest",
+  "best_metrics": {
+    "accuracy": 0.83,
+    "precision_weighted": 0.8299,
+    "recall_weighted": 0.83,
+    "f1_weighted": 0.8293,
+    "precision_macro": 0.8295,
+    "recall_macro": 0.8057,
+    "f1_macro": 0.8162,
+    "per_class": {
+      "Low Risk": {
+        "precision": 0.8316,
+        "recall": 0.8681,
+        "f1": 0.8495,
+        "support": 182
+      },
+      "Medium Risk": {
+        "precision": 0.8294,
+        "recall": 0.8327,
+        "f1": 0.831,
+        "support": 251
+      },
+      "High Risk": {
+        "precision": 0.8276,
+        "recall": 0.7164,
+        "f1": 0.768,
+        "support": 67
+      }
+    },
+    "confusion_matrix": [
+      [
+        158,
+        24,
+        0
+      ],
+      [
+        32,
+        209,
+        10
+      ],
+      [
+        0,
+        19,
+        48
+      ]
+    ],
+    "labels": [
+      "Low Risk",
+      "Medium Risk",
+      "High Risk"
+    ],
+    "n_samples": 500
+  },
+  "feature_importances": [
+    {
+      "feature": "continuous_assessment",
+      "importance": 0.22898
+    },
+    {
+      "feature": "previous_gpa",
+      "importance": 0.16439
+    },
+    {
+      "feature": "mid_sem_score",
+      "importance": 0.13235
+    },
+    {
+      "feature": "assignment_score",
+      "importance": 0.12739
+    },
+    {
+      "feature": "quiz_score",
+      "importance": 0.10893
+    },
+    {
+      "feature": "attendance_pct",
+      "importance": 0.08284
+    },
+    {
+      "feature": "study_hours",
+      "importance": 0.08157
+    },
+    {
+      "feature": "age",
+      "importance": 0.02526
+    },
+    {
+      "feature": "gender: Female",
+      "importance": 0.00626
+    },
+    {
+      "feature": "gender: Male",
+      "importance": 0.00565
+    },
+    {
+      "feature": "department: Business Administration",
+      "importance": 0.00387
+    },
+    {
+      "feature": "department: Computer Science",
+      "importance": 0.00382
+    },
+    {
+      "feature": "programme: BSc Business Administration",
+      "importance": 0.00369
+    },
+    {
+      "feature": "programme: BSc Computer Science",
+      "importance": 0.00363
+    },
+    {
+      "feature": "department: Information Technology",
+      "importance": 0.00334
+    },
+    {
+      "feature": "programme: BSc Economics",
+      "importance": 0.00333
+    },
+    {
+      "feature": "department: Economics",
+      "importance": 0.00332
+    },
+    {
+      "feature": "programme: BSc Mathematics",
+      "importance": 0.00329
+    },
+    {
+      "feature": "department: Mathematics",
+      "importance": 0.00322
+    },
+    {
+      "feature": "programme: BSc Information Technology",
+      "importance": 0.00313
+    },
+    {
+      "feature": "gender: Other",
+      "importance": 0.00176
+    }
+  ]
+}

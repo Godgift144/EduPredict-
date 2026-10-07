@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_label %}Reports{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Reports</h1>
+    <div class="sub">Risk prediction reports for lecturers and academic advisors</div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.export_predictions') }}">Export predictions (CSV)</a>
+    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="window.print()">Print / PDF</button>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card stat-card"><div class="card-body">
+      <div class="stat-label">Students scored</div>
+      <div class="stat-value">{{ summary.scored_students }}</div>
+      <div class="stat-sub">of {{ summary.total_students }} on record</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card"><div class="card-body">
+      <div class="stat-label">High risk</div>
+      <div class="stat-value text-danger">{{ summary.high_risk }}</div>
+      <div class="stat-sub">{{ summary.high_risk_pct }}% of scored students</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card"><div class="card-body">
+      <div class="stat-label">At risk (medium + high)</div>
+      <div class="stat-value">{{ summary.at_risk_pct }}%</div>
+      <div class="stat-sub">{{ summary.medium_risk }} medium · {{ summary.high_risk }} high</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card"><div class="card-body">
+      <div class="stat-label">Actual pass rate</div>
+      <div class="stat-value">{{ (bands.pass_rate ~ '%') if bands else '—' }}</div>
+      <div class="stat-sub">{{ ('mean score ' ~ bands.mean) if bands else 'no outcomes yet' }}</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold">Risk distribution by department</div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr><th>Department</th><th class="text-end">Low</th><th class="text-end">Medium</th><th class="text-end">High</th><th class="text-end">Total</th></tr>
+            </thead>
+            <tbody>
+            {% for dept, counts in dept_distribution.items()|sort %}
+              <tr>
+                <td>{{ dept }}</td>
+                <td class="text-end">{{ counts['Low Risk'] }}</td>
+                <td class="text-end">{{ counts['Medium Risk'] }}</td>
+                <td class="text-end text-danger">{{ counts['High Risk'] }}</td>
+                <td class="text-end fw-semibold">{{ counts['Low Risk'] + counts['Medium Risk'] + counts['High Risk'] }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold">Students per programme</div>
+      <div class="card-body">
+        <canvas id="programmeChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header bg-white fw-semibold">Top high-risk students (advisor work-list)</div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Student ID</th><th>Name</th><th>Department</th>
+          <th class="text-end">Attendance</th><th class="text-end">Prev. GPA</th>
+          <th class="text-end">Confidence</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for student, pred in top %}
+        <tr>
+          <td class="font-monospace">{{ student.student_id }}</td>
+          <td>{{ student.full_name }}</td>
+          <td>{{ student.department }}</td>
+          <td class="text-end">{{ '%.0f'|format(student.attendance_pct) if student.attendance_pct is not none else '—' }}%</td>
+          <td class="text-end">{{ '%.2f'|format(student.previous_gpa) if student.previous_gpa is not none else '—' }}</td>
+          <td class="text-end">{{ '%.0f'|format(pred.confidence * 100) }}%</td>
+          <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.student_detail', student_pk=student.id) }}">Open</a></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No high-risk students detected.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if metrics %}
+<div class="card">
+  <div class="card-header bg-white fw-semibold">Model performance summary ({{ metrics.model_name }})</div>
+  <div class="card-body small">
+    <div class="row">
+      <div class="col-md-6">
+        <table class="table table-sm mb-0">
+          <thead class="table-light"><tr><th>Model</th><th class="text-end">Accuracy</th><th class="text-end">F1 (weighted)</th><th class="text-end">CV F1</th></tr></thead>
+          <tbody>
+          {% for name, res in metrics.models.items() %}
+            <tr class="{% if name == metrics.best_model %}table-success{% endif %}">
+              <td>{{ name }}{% if name == metrics.best_model %} ★{% endif %}</td>
+              <td class="text-end">{{ '%.3f'|format(res.test.accuracy) }}</td>
+              <td class="text-end">{{ '%.3f'|format(res.test.f1_weighted) }}</td>
+              <td class="text-end">{{ '%.3f'|format(res.cv_f1_mean) }} ± {{ '%.3f'|format(res.cv_f1_std) }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="col-md-6">
+        <p class="mb-1">Best model: <strong>{{ metrics.best_model }}</strong></p>
+        <p class="mb-1">Accuracy {{ '%.1f'|format(metrics.best_metrics.accuracy * 100) }}% ·
+          Precision {{ '%.1f'|format(metrics.best_metrics.precision_weighted * 100) }}% ·
+          Recall {{ '%.1f'|format(metrics.best_metrics.recall_weighted * 100) }}% ·
+          F1 {{ '%.1f'|format(metrics.best_metrics.f1_weighted * 100) }}%</p>
+        <p class="mb-0">Trained on {{ metrics.dataset.rows_used }} records
+          ({{ metrics.dataset.raw_rows }} raw → {{ metrics.dataset.dropped_rows }} dropped as duplicates/outcomes missing).</p>
+        <a class="small" href="{{ url_for('main.model_page') }}">Full model report →</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script id="programme-data" type="application/json">{{ programme_distribution | tojson }}</script>
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const canvas = document.getElementById('programmeChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  const data = JSON.parse(document.getElementById('programme-data').textContent);
+  const labels = Object.keys(data).sort();
+  new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: 'Students', data: labels.map((l) => data[l]), backgroundColor: '#0d6efd' }],
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
+  });
+});
+</script>
+{% endblock %}

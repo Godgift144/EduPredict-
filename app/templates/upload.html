@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Upload data{% endblock %}
+{% block page_label %}Upload data{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Upload student records</h1>
+    <div class="sub">Import a CSV mid-semester snapshot — cleaned, scored and dashboarded automatically</div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.upload_template') }}">Download CSV template</a>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header bg-white fw-semibold">Upload student records (CSV)</div>
+      <div class="card-body">
+        <p class="small text-muted">
+          Required columns:
+          <code>student_id, full_name, programme, department, gender, age, previous_gpa,
+          attendance_pct, assignment_score, quiz_score, mid_sem_score,
+          continuous_assessment, study_hours</code>
+          — plus <code>exam_score</code> / <code>final_score</code> when available.
+          Missing values are imputed automatically; duplicates are removed.
+        </p>
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('main.upload') }}">
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            {{ form.file(class_='form-control', accept='.csv') }}
+            {% for err in form.file.errors %}
+              <div class="text-danger small">{{ err }}</div>
+            {% endfor %}
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="predict_now" name="predict_now" checked>
+            <label class="form-check-label small" for="predict_now">
+              Run predictions immediately after import
+            </label>
+          </div>
+          <button class="btn btn-primary" type="submit">Upload and predict</button>
+          <a class="btn btn-outline-secondary" href="{{ url_for('main.upload_template') }}">Download CSV template</a>
+        </form>
+      </div>
+    </div>
+
+    {% if result %}
+    <div class="alert alert-success">
+      <strong>{{ result.filename }}</strong> — {{ result.accepted_rows }} row(s) imported,
+      status <em>{{ result.status }}</em>. {{ result.message }}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold">Recent uploads</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr><th>File</th><th class="text-end">Rows</th><th>Status</th><th>When</th></tr>
+          </thead>
+          <tbody>
+          {% for item in history %}
+            <tr>
+              <td class="small">{{ item.filename }}</td>
+              <td class="text-end">{{ item.accepted_rows }}</td>
+              <td><span class="badge text-bg-{% if item.status == 'completed' %}success{% else %}info{% endif %}">{{ item.status }}</span></td>
+              <td class="small text-muted">{{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-3">No uploads yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card mt-3">
+      <div class="card-header bg-white fw-semibold">What happens next?</div>
+      <ol class="list-group list-group-numbered list-group-flush small">
+        <li class="list-group-item">Rows are validated, de-duplicated and cleaned.</li>
+        <li class="list-group-item">Missing values are imputed; out-of-range values corrected.</li>
+        <li class="list-group-item">The Random Forest model scores every student.</li>
+        <li class="list-group-item">Students appear on the dashboard, sorted by risk.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+{% endblock %}
