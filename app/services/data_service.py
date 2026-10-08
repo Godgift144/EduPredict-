@@ -56,9 +56,15 @@ def _upsert_students(frame: pd.DataFrame) -> tuple[list[Student], int]:
     """Insert or update students keyed by ``student_id``."""
     created, updated = 0, 0
     students: list[Student] = []
-    for _, row in frame.iterrows():
-        sid = str(row.get("student_id", "")).strip().upper()
-        student = Student.query.filter_by(student_id=sid).first()
+    # Single prefetch instead of a SELECT per row (N+1): on a remote database
+    # a 2,500-row import would otherwise cost thousands of round-trips.
+    records = frame.to_dict("records")
+    sids = [str(r.get("student_id", "")).strip().upper() for r in records]
+    existing: dict[str, Student | None] = dict.fromkeys(sids)
+    if existing:
+        for found in Student.query.filter(Student.student_id.in_(existing)):
+            existing[found.student_id] = found
+    for sid, row in zip(sids, records):
         values = {
             "full_name": str(row.get("full_name") or "Unknown").strip() or "Unknown",
             "programme": str(row.get("programme") or "Unknown"),
@@ -77,9 +83,11 @@ def _upsert_students(frame: pd.DataFrame) -> tuple[list[Student], int]:
             "final_score": _as_float(row.get("final_score")),
             "risk_level": row.get("risk_label"),
         }
+        student = existing.get(sid)
         if student is None:
             student = Student(student_id=sid, **values)
             db.session.add(student)
+            existing[sid] = student
             created += 1
         else:
             for key, value in values.items():
