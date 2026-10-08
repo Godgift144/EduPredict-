@@ -19,10 +19,23 @@ METRICS_PATH = ARTIFACTS_DIR / "metrics.json"
 TRAINING_DATA_PATH = RAW_DATA_DIR / "student_records.csv"
 
 
-def _default_db_url() -> str:
-    """SQLite URL stored inside the project ``data`` directory."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    return f"sqlite:///{(DATA_DIR / 'app.db').as_posix()}"
+def _database_url() -> str:
+    """DATABASE_URL from the environment, normalised for SQLAlchemy 2.x.
+
+    Providers often hand out ``postgres://`` URLs; SQLAlchemy removed that
+    legacy scheme, and the only Postgres driver we ship is psycopg (v3), so
+    both forms are rewritten to ``postgresql+psycopg://``.
+    """
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        # SQLite URL stored inside the project ``data`` directory.
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        return f"sqlite:///{(DATA_DIR / 'app.db').as_posix()}"
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+    return url
 
 
 class Config:
@@ -37,7 +50,7 @@ class Config:
     # ------------------------------------------------------------------ #
     # Database
     # ------------------------------------------------------------------ #
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or _default_db_url()
+    SQLALCHEMY_DATABASE_URI = _database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
