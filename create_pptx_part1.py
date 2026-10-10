@@ -656,38 +656,47 @@ def _line_count(ln, sz):
     return max(1, int(len(ln)/cpl) + (1 if (";" in ln or ln.count(" ")>cpl*0.85) else 0))
 
 def _content_columns(s, bullets, ncols, accent):
-    line_h_in = 0.235
-    body_bottom = Inches(6.62)
+    line_h_in = 0.225
+    body_bottom = Inches(6.78)
+    head_h_in = 0.235
     cw = (W - Inches(1.25) - Inches(0.3)*(ncols-1))/ncols
     xs = [Inches(0.6) + i*(cw+Inches(0.3)) for i in range(ncols)]
-    ys = [Inches(1.16) for _ in range(ncols)]
+    ys = [Inches(1.14) for _ in range(ncols)]
+    def box_h(approx, sz):
+        # textbox height = lines * line height + small pad
+        lh = 0.225 if sz <= 12 else 0.235
+        return approx*Inches(lh) + Inches(0.06)
+    def place_it(ci, ln, sz, approx, needed, c, b):
+        hh = box_h(approx, sz)
+        # NEVER place a box that would extend past body_bottom
+        if ys[ci] + hh > body_bottom:
+            return False
+        hh = min(hh, Inches(0.95))  # cap heading bars so they never blow out
+        paras(s, xs[ci], ys[ci], cw-Inches(0.12), hh, [ln], sz=sz, c=c,
+              bul=False, ls=(1.16 if sz == 12 else 1.2), gap_after=(4 if _is_heading(ln) else 3),
+              first_bold=b)
+        ys[ci] = ys[ci] + needed
+        return True
     for ln in bullets:
-        approx = _line_count(ln, 13)
-        needed = approx*Inches(line_h_in) + Inches(0.06)
-        # place in column with most room (lowest ys)
-        ci = min(range(ncols), key=lambda i: ys[i])
-        if ys[ci] + needed > body_bottom:
-            # this bullet won't fit anywhere at this size; try smaller size or stop
-            # try sz=12 if sz=13 doesn't fit in the emptiest column
-            approx2 = _line_count(ln, 12)
-            needed2 = approx2*Inches(0.22) + Inches(0.05)
-            ci = min(range(ncols), key=lambda i: ys[i])
-            if ys[ci] + needed2 > body_bottom:
+        approx13 = _line_count(ln, 13)
+        needed13 = approx13*Inches(line_h_in) + Inches(0.06)
+        approx12 = _line_count(ln, 12)
+        needed12 = approx12*Inches(0.22) + Inches(0.05)
+        approx11 = _line_count(ln, 11)
+        needed11 = approx11*Inches(0.21) + Inches(0.04)
+        head = _is_heading(ln)
+        c = GOLD_SO if head else LIGHT
+        b = True if head else False
+        placed = False
+        for sz, approx, needed in [(13, approx13, needed13), (12, approx12, needed12), (11, approx11, needed11)]:
+            if placed:
                 break
-            sz = 12
-            c = LIGHT; b = False
-            if _is_heading(ln): c = GOLD_SO; b = True
-            hh2 = approx2*Inches(0.225) + Inches(0.1)
-            paras(s, xs[ci], ys[ci], cw-Inches(0.12), hh2, [ln], sz=sz, c=c,
-                  bul=False, ls=1.18, gap_after=(5 if _is_heading(ln) else 3), first_bold=b)
-            ys[ci] = ys[ci] + needed2
-        else:
-            c = LIGHT; b = False
-            if _is_heading(ln): c = GOLD_SO; b = True
-            hh = approx*Inches(0.245) + Inches(0.1)
-            paras(s, xs[ci], ys[ci], cw-Inches(0.12), hh, [ln], sz=13, c=c,
-                  bul=False, ls=1.2, gap_after=(6 if _is_heading(ln) else 4), first_bold=b)
-            ys[ci] = ys[ci] + needed
+            ci = min(range(ncols), key=lambda i: ys[i])
+            if place_it(ci, ln, sz, approx, needed, c, b):
+                placed = True
+        if not placed:
+            # truly can't fit even at 11pt; stop placing further bullets in this column set
+            break
     # column divider lines
     for i in range(1, ncols):
         xv = Inches(0.6) + i*(cw+Inches(0.3)) - Inches(0.15)
